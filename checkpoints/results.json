@@ -1,0 +1,9 @@
+{
+  "prototypical": [
+    {
+      "epoch": 1,
+      "train_loss": 0.0,
+      "train_accuracy": 1.0
+    }
+  ]
+}
