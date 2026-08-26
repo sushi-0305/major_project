@@ -1,8 +1,22 @@
+# Python
 venv/
 __pycache__/
 *.pyc
+
+# Trained model files
 *.pth
 *.pt
 
+# HAM10000 dataset images
 data/HAM10000_images_part_1/
 data/HAM10000_images_part_2/
+
+# Uploaded images
+app/uploads/
+
+# Generated results
+results/
+
+# Temporary files
+*.tmp
+*.log

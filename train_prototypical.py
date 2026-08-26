@@ -24,12 +24,12 @@ N_WAY = 5
 K_SHOT = 1
 Q_QUERY = 5
 
-EPISODES = 100
-EPOCHS = 5
+EPISODES = 200
+EPOCHS = 10
 
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0005
 
-EMBEDDING_DIM = 64
+EMBEDDING_DIM = 128
 
 
 # --------------------------------------------------
@@ -325,7 +325,7 @@ for epoch in range(EPOCHS):
 # Save model
 # --------------------------------------------------
 
-MODEL_PATH = "prototypical_skin_model.pth"
+MODEL_PATH = "prototypical_skin_model_improved.pth"
 
 torch.save(
     model.state_dict(),
