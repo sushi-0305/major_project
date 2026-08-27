@@ -1,5 +1,7 @@
 # Python
 venv/
+.venv/
+.torch_cache/
 __pycache__/
 *.pyc
 

@@ -1,8 +1,10 @@
-torch==2.13.0
-torchvision==0.28.0
+# Compatible PyTorch releases for the project's supported Python 3.11 runtime.
+torch==2.7.0
+torchvision==0.22.0
 pandas
 numpy
 Pillow
 scikit-learn
 matplotlib
 flask
+tqdm

@@ -18,14 +18,14 @@ def get_train_transform(image_size=128):
         ),
 
         transforms.RandomRotation(
-            degrees=20
+            degrees=10
         ),
 
         transforms.ColorJitter(
-            brightness=0.2,
-            contrast=0.2,
-            saturation=0.2,
-            hue=0.05
+            brightness=0.1,
+            contrast=0.1,
+            saturation=0.1,
+            hue=0.02
         ),
 
         transforms.ToTensor(),

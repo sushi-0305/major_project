@@ -57,13 +57,22 @@ class FourLayerCNN(nn.Module):
 
         self.embedding = nn.Sequential(
 
-            nn.Flatten(),
+    nn.Flatten(),
 
-            nn.Linear(
-                64 * 8 * 8,
-                embedding_dim
-            )
-        )
+    nn.Linear(
+        64 * 8 * 8,
+        128
+    ),
+
+    nn.ReLU(),
+
+    nn.Dropout(p=0.3),
+
+    nn.Linear(
+        128,
+        embedding_dim
+    )
+)
 
     def forward(self, x):
 

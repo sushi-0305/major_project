@@ -33,18 +33,23 @@ class ResNet18Embedding(nn.Module):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-        # Learnable embedding projection
-        self.embedding = nn.Sequential(
+        # A frozen pretrained backbone can be used directly for a stable
+        # transfer-learning baseline. A projection head remains available for
+        # experiments that fine-tune it.
+        if embedding_dim is None:
+            self.embedding = nn.Identity()
+        else:
+            self.embedding = nn.Sequential(
 
-            nn.Linear(
-                input_features,
-                embedding_dim
-            ),
+                nn.Linear(
+                    input_features,
+                    embedding_dim
+                ),
 
-            nn.ReLU(),
+                nn.ReLU(),
 
-            nn.Dropout(0.2)
-        )
+                nn.Dropout(0.2)
+            )
 
     def forward(self, x):
 

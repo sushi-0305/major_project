@@ -34,7 +34,7 @@ LEARNING_RATE = 0.001
 # Model configuration
 EMBEDDING_DIM = 64
 
-MODEL_PATH = "prototypical_skin_model_5shot.pth"
+MODEL_PATH = "checkpoints/experiment_05_base.pthical_skin_model_5shot.pth"
 
 
 # ==================================================
