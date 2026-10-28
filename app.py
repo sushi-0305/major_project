@@ -13,8 +13,7 @@ from utils.prototypical_network import PrototypicalNetwork
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# Best validated incremental checkpoint: 48.16% held-out episodic accuracy.
-MODEL_PATH = BASE_DIR / "checkpoints" / "protonet_cnn_increment_05.pth"
+MODEL_PATH = BASE_DIR / "checkpoints" / "prototypical_skin_model_5shot_best.pth"
 TRAIN_FILE = BASE_DIR / "data" / "splits" / "train.csv"
 
 IMAGE_DIRS = [
