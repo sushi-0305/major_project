@@ -3,12 +3,22 @@ venv/
 .venv/
 .torch_cache/
 __pycache__/
-*.pyc
+*.py[cod]
 
 # Trained model files
 *.pth
 *.pt
 
+# Dataset archives and images
+data/archive.zip
+data/archive/
+data/derm12345.zip
+data/derm12345/
+
+# Model checkpoints and backup archives
+checkpoints/*.pth
+checkpoints/*.pt
+checkpoints/*.zip
 # HAM10000 dataset images
 data/HAM10000_images_part_1/
 data/HAM10000_images_part_2/
