@@ -36,3 +36,16 @@ results/
 # macOS metadata
 .DS_Store
 **/.DS_Store
+# Generated checkpoint experiments
+checkpoints/prototypical_final/
+checkpoints/test_run/
+checkpoints/test_run_cpu/
+
+# Dataset CSV exports
+data/hmnist_28_28_L.csv
+data/hmnist_28_28_RGB.csv
+data/hmnist_8_8_L.csv
+data/hmnist_8_8_RGB.csv
+
+# Frontend archives
+skin_disease_frontend.zip

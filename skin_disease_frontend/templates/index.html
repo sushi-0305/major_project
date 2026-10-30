@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skin Disease Classification</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <section class="hero">
+            <p class="eyebrow">HAM10000 · FEW-SHOT LEARNING</p>
+            <h1>Skin Disease Classification</h1>
+            <p class="intro">
+                Upload a dermoscopic image to see the model's predicted class
+                and confidence.
+            </p>
+        </section>
+
+        <section class="card">
+            <form id="upload-form">
+                <label class="upload-area" for="image-input">
+                    <input
+                        id="image-input"
+                        name="image"
+                        type="file"
+                        accept=".jpg,.jpeg,.png"
+                        hidden
+                    >
+
+                    <span class="upload-title">Choose an image</span>
+                    <span class="upload-subtitle">
+                        JPG, JPEG or PNG · up to 8 MB
+                    </span>
+                </label>
+
+                <div id="preview-wrap" class="preview-wrap hidden">
+                    <img id="preview" alt="Selected image preview">
+                    <button id="clear-button" type="button" class="text-button">
+                        Remove
+                    </button>
+                </div>
+
+                <button id="submit-button" class="primary-button" type="submit" disabled>
+                    Analyze image
+                </button>
+            </form>
+
+            <div id="status" class="status" aria-live="polite"></div>
+        </section>
+
+        <section id="result" class="result hidden">
+            <div class="result-header">
+                <div>
+                    <p class="eyebrow">PREDICTION</p>
+                    <h2 id="prediction">—</h2>
+                </div>
+                <div class="confidence">
+                    <span>Confidence</span>
+                    <strong id="confidence">—</strong>
+                </div>
+            </div>
+
+            <div>
+                <p class="section-label">Class probabilities</p>
+                <div id="probabilities" class="probabilities"></div>
+            </div>
+        </section>
+
+        <p class="note">
+            This interface is a research/demo tool and is not intended for
+            medical diagnosis.
+        </p>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,38 +1,41 @@
+from pathlib import Path
+
 import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 
 
 class Derm12345Dataset(Dataset):
+    CLASSES = ["bcc", "bkl", "df", "mel", "nv"]
 
-    def __init__(self, metadata_file, transform=None, class_to_idx=None):
-        self.metadata = pd.read_csv(metadata_file)
+    def __init__(self, manifest_file, transform=None):
+        self.metadata = pd.read_csv(manifest_file)
         self.transform = transform
 
-        self.classes = ["bcc", "bkl", "df", "mel", "nv"]
+        self.metadata = self.metadata[
+            self.metadata["label"].isin(self.CLASSES)
+        ].reset_index(drop=True)
 
-        if class_to_idx is None:
-            self.class_to_idx = {
-                name: idx for idx, name in enumerate(self.classes)
-            }
-        else:
-            self.class_to_idx = class_to_idx
-            self.classes = [
-                name for name, idx in
-                sorted(class_to_idx.items(), key=lambda item: item[1])
-            ]
+        self.class_to_idx = {
+            label: index for index, label in enumerate(self.CLASSES)
+        }
 
     def __len__(self):
         return len(self.metadata)
 
-    def __getitem__(self, idx):
-        row = self.metadata.iloc[idx]
+    def __getitem__(self, index):
+        row = self.metadata.iloc[index]
+        image_path = Path(row["image_path"])
 
-        # Use the full image path already saved in the manifest.
-        image = Image.open(row["image_path"]).convert("RGB")
-        label = self.class_to_idx[row["label"]]
+        with Image.open(image_path) as image:
+            image = image.convert("RGB")
 
         if self.transform:
             image = self.transform(image)
 
+        label = self.class_to_idx[row["label"]]
         return image, label
+
+    @property
+    def classes(self):
+        return self.CLASSES

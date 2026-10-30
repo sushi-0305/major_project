@@ -1,36 +1,28 @@
+import os
+import random
 from pathlib import Path
 
 import pandas as pd
 import torch
 from flask import Flask, jsonify, render_template, request
 from PIL import Image
+from werkzeug.utils import secure_filename
 from torchvision import transforms
 
-from utils.dataset import HAM10000Dataset
-from utils.model import FourLayerCNN
-from utils.prototypical_network import PrototypicalNetwork
+from models.prototypical_networks import PrototypicalNetworks, ConvNet
 
 
 BASE_DIR = Path(__file__).resolve().parent
-
-MODEL_PATH = BASE_DIR / "checkpoints" / "prototypical_skin_model_5shot_best.pth"
-TRAIN_FILE = BASE_DIR / "data" / "splits" / "train.csv"
+DATA_DIR = BASE_DIR / "data"
+SPLIT_DIR = DATA_DIR / "splits"
+CHECKPOINT = BASE_DIR / "checkpoints" / "ham10000_prototypical" / "proto_networks_best.pth"
 
 IMAGE_DIRS = [
-    BASE_DIR / "data" / "HAM10000_images_part_1",
-    BASE_DIR / "data" / "HAM10000_images_part_2",
+    DATA_DIR / "HAM10000_images_part_1",
+    DATA_DIR / "HAM10000_images_part_2",
 ]
 
-CLASS_NAMES = [
-    "akiec",
-    "bcc",
-    "bkl",
-    "df",
-    "mel",
-    "nv",
-    "vasc",
-]
-
+CLASS_NAMES = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
 CLASS_LABELS = {
     "akiec": "Actinic keratoses",
     "bcc": "Basal cell carcinoma",
@@ -41,105 +33,79 @@ CLASS_LABELS = {
     "vasc": "Vascular lesions",
 }
 
-DEVICE = torch.device("cpu")
-IMAGE_SIZE = 128
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
 N_SHOT = 5
+IMAGE_SIZE = 84
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
+DEVICE = torch.device("cpu")
 
 transform = transforms.Compose([
     transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
     transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+    ),
 ])
 
 
 def find_image(image_id):
     filename = f"{image_id}.jpg"
-
     for directory in IMAGE_DIRS:
         path = directory / filename
-
         if path.exists():
             return path
-
-    raise FileNotFoundError(
-        f"Could not find image: {image_id}.jpg"
-    )
+    raise FileNotFoundError(f"Could not find image: {image_id}")
 
 
 def build_support_set():
-    """
-    Use the same five-shot support images for each class
-    from the training dataset.
-    """
+    """Use a fixed 5-shot support set from the training split."""
+    train_csv = SPLIT_DIR / "train.csv"
+    if not train_csv.exists():
+        raise FileNotFoundError(f"Missing {train_csv}")
 
-    dataset = HAM10000Dataset(
-        metadata_file=str(TRAIN_FILE),
-        image_dirs=[str(path) for path in IMAGE_DIRS],
-        transform=transform,
-    )
+    df = pd.read_csv(train_csv)
 
-    support_images = []
+    support_paths = []
     support_labels = []
 
     for class_index, class_name in enumerate(CLASS_NAMES):
+        rows = df[df["dx"] == class_name].head(N_SHOT)
 
-        class_rows = dataset.metadata[
-            dataset.metadata["dx"] == class_name
-        ].head(N_SHOT)
-
-        if len(class_rows) < N_SHOT:
+        if len(rows) < N_SHOT:
             raise RuntimeError(
-                f"Not enough support images for {class_name}"
+                f"Not enough training images for class '{class_name}'."
             )
 
-        for _, row in class_rows.iterrows():
-
-            image_path = find_image(row["image_id"])
-
-            with Image.open(image_path) as image:
-                image = image.convert("RGB")
-                image = transform(image)
-
-            support_images.append(image)
+        for _, row in rows.iterrows():
+            support_paths.append(find_image(row["image_id"]))
             support_labels.append(class_index)
 
-    support_images = torch.stack(support_images).to(DEVICE)
+    images = []
+    for path in support_paths:
+        with Image.open(path) as image:
+            images.append(transform(image.convert("RGB")))
 
-    support_labels = torch.tensor(
-        support_labels,
-        dtype=torch.long
-    ).to(DEVICE)
-
+    support_images = torch.stack(images).to(DEVICE)
+    support_labels = torch.tensor(support_labels, dtype=torch.long).to(DEVICE)
     return support_images, support_labels
 
 
 def load_model():
-
-    if not MODEL_PATH.exists():
+    if not CHECKPOINT.exists():
         raise FileNotFoundError(
-            f"Model checkpoint not found: {MODEL_PATH}"
+            f"Model checkpoint not found: {CHECKPOINT}"
         )
 
-    backbone = FourLayerCNN(
-        embedding_dim=64
-    )
+    backbone = ConvNet(in_channels=3, hidden_dim=64)
+    model = PrototypicalNetworks(backbone, hidden_dim=64).to(DEVICE)
 
-    model = PrototypicalNetwork(
-        backbone
-    ).to(DEVICE)
-
-    checkpoint = torch.load(
-        MODEL_PATH,
-        map_location=DEVICE
-    )
-
-    model.load_state_dict(checkpoint)
-
+    state = torch.load(CHECKPOINT, map_location=DEVICE)
+    model.load_state_dict(state)
     model.eval()
-
     return model
 
 
@@ -148,148 +114,75 @@ SUPPORT_IMAGES = None
 SUPPORT_LABELS = None
 
 
-def initialize():
-
-    global MODEL
-    global SUPPORT_IMAGES
-    global SUPPORT_LABELS
-
+def ensure_model():
+    global MODEL, SUPPORT_IMAGES, SUPPORT_LABELS
     if MODEL is None:
-
-        print("Loading 5-shot ProtoNet...")
-
         MODEL = load_model()
-
         SUPPORT_IMAGES, SUPPORT_LABELS = build_support_set()
 
-        print("Model loaded successfully.")
+
+def allowed_file(filename):
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
 @app.route("/")
 def index():
-
-    return render_template(
-        "index.html",
-        class_labels=CLASS_LABELS
-    )
+    return render_template("index.html", class_labels=CLASS_LABELS)
 
 
 @app.route("/predict", methods=["POST"])
 def predict():
-
     if "image" not in request.files:
-
-        return jsonify({
-            "error": "Please select an image."
-        }), 400
+        return jsonify({"error": "Please select an image."}), 400
 
     uploaded = request.files["image"]
 
-    if uploaded.filename == "":
+    if not uploaded.filename:
+        return jsonify({"error": "Please select an image."}), 400
 
+    if not allowed_file(uploaded.filename):
         return jsonify({
-            "error": "Please select an image."
-        }), 400
-
-    allowed = {
-        "jpg",
-        "jpeg",
-        "png"
-    }
-
-    extension = uploaded.filename.rsplit(
-        ".",
-        1
-    )[-1].lower()
-
-    if extension not in allowed:
-
-        return jsonify({
-            "error": "Please upload a JPG, JPEG or PNG image."
+            "error": "Please upload a JPG, JPEG, or PNG image."
         }), 400
 
     try:
+        ensure_model()
 
-        initialize()
-
-        image = Image.open(
-            uploaded.stream
-        ).convert("RGB")
-
-        query_image = transform(
-            image
-        ).unsqueeze(0).to(DEVICE)
+        image = Image.open(uploaded.stream).convert("RGB")
+        query = transform(image).unsqueeze(0).to(DEVICE)
 
         with torch.no_grad():
+            logits = MODEL(SUPPORT_IMAGES, SUPPORT_LABELS, query)
+            probabilities = torch.softmax(logits, dim=1)[0]
 
-            distances, _, _ = MODEL(
-                SUPPORT_IMAGES,
-                SUPPORT_LABELS,
-                query_image
-            )
-
-            probabilities = torch.softmax(
-                -distances,
-                dim=1
-            )[0]
-
-        predicted_index = int(
-            probabilities.argmax().item()
-        )
-
-        predicted_class = CLASS_NAMES[
-            predicted_index
-        ]
+        top_index = int(probabilities.argmax().item())
+        confidence = float(probabilities[top_index].item())
 
         results = []
-
         for index, class_name in enumerate(CLASS_NAMES):
-
             results.append({
                 "class_name": class_name,
                 "label": CLASS_LABELS[class_name],
-                "probability": round(
-                    float(probabilities[index]) * 100,
-                    2
-                )
+                "probability": round(float(probabilities[index].item()) * 100, 2),
             })
 
-        results.sort(
-            key=lambda x: x["probability"],
-            reverse=True
-        )
+        results.sort(key=lambda item: item["probability"], reverse=True)
 
         return jsonify({
-
-            "prediction":
-                CLASS_LABELS[predicted_class],
-
-            "class_name":
-                predicted_class,
-
-            "confidence":
-                round(
-                    float(
-                        probabilities[predicted_index]
-                    ) * 100,
-                    2
-                ),
-
-            "results":
-                results
+            "prediction": CLASS_LABELS[CLASS_NAMES[top_index]],
+            "class_name": CLASS_NAMES[top_index],
+            "confidence": round(confidence * 100, 2),
+            "results": results,
         })
 
-    except Exception as error:
-
-        print("Prediction error:", error)
-
+    except Exception as exc:
         return jsonify({
-            "error": str(error)
+            "error": str(exc)
         }), 500
 
 
 if __name__ == "__main__":
-
-    app.run(
-        debug=True
-    )
+    app.run(debug=True)

@@ -1,83 +1,35 @@
-import torch
 import torch.nn as nn
 
 
 class FourLayerCNN(nn.Module):
+    def __init__(self, embedding_dim=128):
+        super().__init__()
 
-    def __init__(self, embedding_dim=64):
-
-        super(FourLayerCNN, self).__init__()
-
-        self.encoder = nn.Sequential(
-
-            # Layer 1
-            nn.Conv2d(
-                in_channels=3,
-                out_channels=32,
-                kernel_size=3,
-                padding=1
-            ),
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
 
-            # Layer 2
-            nn.Conv2d(
-                in_channels=32,
-                out_channels=64,
-                kernel_size=3,
-                padding=1
-            ),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
 
-            # Layer 3
-            nn.Conv2d(
-                in_channels=64,
-                out_channels=64,
-                kernel_size=3,
-                padding=1
-            ),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
 
-            # Layer 4
-            nn.Conv2d(
-                in_channels=64,
-                out_channels=64,
-                kernel_size=3,
-                padding=1
-            ),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(2)
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1)),
         )
 
-        self.embedding = nn.Sequential(
-
-    nn.Flatten(),
-
-    nn.Linear(
-        64 * 8 * 8,
-        128
-    ),
-
-    nn.ReLU(),
-
-    nn.Dropout(p=0.3),
-
-    nn.Linear(
-        128,
-        embedding_dim
-    )
-)
+        self.embedding = nn.Linear(64, embedding_dim)
 
     def forward(self, x):
-
-        x = self.encoder(x)
-
-        x = self.embedding(x)
-
-        return x
+        x = self.features(x)
+        x = x.flatten(1)
+        return self.embedding(x)
